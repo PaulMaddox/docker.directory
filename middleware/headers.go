@@ -5,6 +5,7 @@ import "github.com/gocraft/web"
 // ContentJson sets the content header for JSON responses
 func ContentTypeJson(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
 	res.Header().Set("Content-Type", "application/json")
+	next(res, req)
 }
 
 // Version adds a X-Docker-Registry-Version cookie header
