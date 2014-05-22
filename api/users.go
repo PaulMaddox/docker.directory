@@ -26,33 +26,10 @@ func (c *ApiContext) UserCreate(res web.ResponseWriter, req *web.Request) {
 		return
 	}
 
-	if err := user.Validate(); err != nil {
-		log.Printf("Warning: Validation failed for new user %s <%s> (%s)", user.Username, user.Email, err)
+	if err := user.Create(c.Database); err != nil {
+		log.Printf("Failed to create user %s <%s>", user.Username, user.Email)
 		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(res, err)
-		return
-	}
-
-	// The docker tool delivers passwords in plain-text.
-	// We have no need for that - bcrypt them
-	if err := user.EncryptPassword(); err != nil {
-		log.Printf("Error: Unable to bcrypt password for user %s (%s)", user.Username, err)
-		res.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(res, "Could not bcrypt passphrase - aborting!")
-	}
-
-	if c.Database == nil {
-		log.Printf("Database is nil!")
-	}
-
-	db := c.Database.Copy()
-	defer db.Close()
-
-	collection := db.DB("directory").C("users")
-	if err := collection.Insert(user); err != nil {
-		log.Printf("Error: Could not insert new user %s (%s)", user.Username, err)
-		res.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(res, "There was an error while trying to create the user - please try again later")
 		return
 	}
 
