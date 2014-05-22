@@ -2,23 +2,28 @@ package api
 
 import (
 	"fmt"
-	"time"
-	"labix.org/v2/mgo"
 
+	"github.com/PaulMaddox/docker.directory/models"
 	"github.com/gocraft/web"
+	"labix.org/v2/mgo"
 )
 
+// Context is inialised for each user by the middleware and passed
+// to the URL handlers when it can be inspected/updated.
 type Context struct {
-	Id       int64
-	Started  time.Time
-	Modified time.Time
-	Database *mgo.Session
+	User          *models.User
+	Database      *mgo.Session
+	AuthWhitelist []string
 }
 
-type ApiContext struct {
+// APIContext is inialised for each API user by the middleware and passed
+// to the URL handlers when it can be inspected/updated.
+type APIContext struct {
 	*Context
 }
 
+// Database is used to store a handle to the *mgo.Session
+// so that it can be injected by the middleware into the context
 var Database *mgo.Session
 
 // NewRouter generates a new Mux router that implements
@@ -40,39 +45,41 @@ func NewRouter(db *mgo.Session) *web.Router {
 
 	// Setup Docker registry API routes as per
 	// http://docs.docker.io/reference/api/registry_index_spec/
-	api := r.Subrouter(ApiContext{}, "/v1")
-	api.Middleware(ContentTypeJson)
+	api := r.Subrouter(APIContext{}, "/v1")
+	api.Middleware(ContentTypeJSON)
+	api.Middleware((*APIContext).AuthenticationWhitelist)
+	api.Middleware((*APIContext).BasicAuthentication)
 
-	api.Get("/users", (*ApiContext).UserLogin)
-	api.Post("/users", (*ApiContext).UserCreate)
-	api.Put("/users/:username", (*ApiContext).UserUpdate)
+	api.Get("/users", (*APIContext).UserLogin)
+	api.Post("/users", (*APIContext).UserCreate)
+	api.Put("/users/:username", (*APIContext).UserUpdate)
 
-	api.Get("/images/:image_id/layer", (*ApiContext).LayerGet)
-	api.Put("/images/:image_id/layer", (*ApiContext).LayerPut)
-	api.Delete("/images/:image_id/layer", (*ApiContext).LayerDelete)
+	api.Get("/images/:image_id/layer", (*APIContext).LayerGet)
+	api.Put("/images/:image_id/layer", (*APIContext).LayerPut)
+	api.Delete("/images/:image_id/layer", (*APIContext).LayerDelete)
 
-	api.Get("/images", (*ApiContext).ImageIndex)
-	api.Get("/images/:image_id/json", (*ApiContext).ImageGet)
-	api.Put("/images/:image_id/json", (*ApiContext).ImagePut)
-	api.Delete("/images/:image_id/json", (*ApiContext).ImageDelete)
+	api.Get("/images", (*APIContext).ImageIndex)
+	api.Get("/images/:image_id/json", (*APIContext).ImageGet)
+	api.Put("/images/:image_id/json", (*APIContext).ImagePut)
+	api.Delete("/images/:image_id/json", (*APIContext).ImageDelete)
 
-	api.Get("/images/:image_id/ancestry", (*ApiContext).AncestryGet)
-	api.Put("/images/:image_id/ancestry", (*ApiContext).AncestryPut)
-	api.Delete("/images/:image_id/ancestry", (*ApiContext).AncestryDelete)
+	api.Get("/images/:image_id/ancestry", (*APIContext).AncestryGet)
+	api.Put("/images/:image_id/ancestry", (*APIContext).AncestryPut)
+	api.Delete("/images/:image_id/ancestry", (*APIContext).AncestryDelete)
 
-	api.Put("/repositories/:namespace/:repository", (*ApiContext).RepositoryPut)
-	api.Put("/repositories/:namespace/:repository/auth", (*ApiContext).RepositoryAuth)
-	api.Delete("/repositories/:namespace/:repository", (*ApiContext).RepositoryDelete)
+	api.Put("/repositories/:namespace/:repository", (*APIContext).RepositoryPut)
+	api.Put("/repositories/:namespace/:repository/auth", (*APIContext).RepositoryAuth)
+	api.Delete("/repositories/:namespace/:repository", (*APIContext).RepositoryDelete)
 
-	api.Get("/repositories/:namespace/:repository/tags", (*ApiContext).TagsGet)
-	api.Get("/repositories/:namespace/:repository/tags/:tag", (*ApiContext).TagGet)
-	api.Put("/repositories/:namespace/:repository/tags/:tag", (*ApiContext).TagPut)
-	api.Delete("/repositories/:namespace/:repository/tags/:tag", (*ApiContext).TagDelete)
+	api.Get("/repositories/:namespace/:repository/tags", (*APIContext).TagsGet)
+	api.Get("/repositories/:namespace/:repository/tags/:tag", (*APIContext).TagGet)
+	api.Put("/repositories/:namespace/:repository/tags/:tag", (*APIContext).TagPut)
+	api.Delete("/repositories/:namespace/:repository/tags/:tag", (*APIContext).TagDelete)
 
-	api.Get("/repositories/:namespace/:repository/images", (*ApiContext).RepositoryImageGet)
-	api.Put("/repositories/:namespace/:repository/images", (*ApiContext).RepositoryImagePut)
+	api.Get("/repositories/:namespace/:repository/images", (*APIContext).RepositoryImageGet)
+	api.Put("/repositories/:namespace/:repository/images", (*APIContext).RepositoryImagePut)
 
-	api.Get("/_ping", (*ApiContext).Status)
+	api.Get("/_ping", (*APIContext).Status)
 
 	return r
 

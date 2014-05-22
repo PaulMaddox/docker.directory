@@ -7,27 +7,27 @@ import (
 	"github.com/gocraft/web"
 )
 
-func (c *ApiContext) RepositoryAuth(res web.ResponseWriter, req *web.Request) {
+func (c *APIContext) RepositoryAuth(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
-	fmt.Fprint(res, Json{"error": "Not implemented"})
+	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
 
-func (c *ApiContext) RepositoryPut(res web.ResponseWriter, req *web.Request) {
+func (c *APIContext) RepositoryPut(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
-	fmt.Fprint(res, Json{"error": "Not implemented"})
+	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
 
-func (c *ApiContext) RepositoryDelete(res web.ResponseWriter, req *web.Request) {
+func (c *APIContext) RepositoryDelete(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
-	fmt.Fprint(res, Json{"error": "Not implemented"})
+	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
 
-func (c *ApiContext) RepositoryImageGet(res web.ResponseWriter, req *web.Request) {
+func (c *APIContext) RepositoryImageGet(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
-	fmt.Fprint(res, Json{"error": "Not implemented"})
+	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
 
-func (c *ApiContext) RepositoryImagePut(res web.ResponseWriter, req *web.Request) {
+func (c *APIContext) RepositoryImagePut(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
-	fmt.Fprint(res, Json{"error": "Not implemented"})
+	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }

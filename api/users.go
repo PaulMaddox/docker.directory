@@ -10,12 +10,8 @@ import (
 	"github.com/gocraft/web"
 )
 
-func (c *ApiContext) UserLogin(res web.ResponseWriter, req *web.Request) {
-	res.WriteHeader(http.StatusNotImplemented)
-	fmt.Fprint(res, Json{"error": "Not implemented"})
-}
-
-func (c *ApiContext) UserCreate(res web.ResponseWriter, req *web.Request) {
+// UserCreate handles user creation POST requests from the docker client
+func (c *APIContext) UserCreate(res web.ResponseWriter, req *web.Request) {
 
 	decoder := json.NewDecoder(req.Body)
 	var user models.User
@@ -39,7 +35,12 @@ func (c *ApiContext) UserCreate(res web.ResponseWriter, req *web.Request) {
 
 }
 
-func (c *ApiContext) UserUpdate(res web.ResponseWriter, req *web.Request) {
+func (c *APIContext) UserUpdate(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
-	fmt.Fprint(res, Json{"error": "Not implemented"})
+	fmt.Fprint(res, JSON{"error": "Not implemented"})
+}
+
+func (c *APIContext) UserLogin(res web.ResponseWriter, req *web.Request) {
+	res.WriteHeader(http.StatusNotImplemented)
+	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
