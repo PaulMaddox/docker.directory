@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 	"time"
+	"labix.org/v2/mgo"
 
-	"github.com/PaulMaddox/docker.directory/middleware"
 	"github.com/gocraft/web"
 )
 
@@ -12,26 +12,28 @@ type Context struct {
 	Id       int64
 	Started  time.Time
 	Modified time.Time
+	Database *mgo.Session
 }
 
 type ApiContext struct {
 	*Context
 }
 
+var Database *mgo.Session
+
 // NewRouter generates a new Mux router that implements
 // the various Docker Registry API calls required
-func NewRouter() *web.Router {
+func NewRouter(db *mgo.Session) *web.Router {
 
-	r := web.New(Context{
-		Started:  time.Now(),
-		Modified: time.Now(),
-	})
+	Database = db
+	r := web.New(Context{})
 
 	// Setup middleware
 	r.Middleware(web.LoggerMiddleware)
 	r.Middleware(web.ShowErrorsMiddleware)
-	r.Middleware(middleware.Version)
-	r.Middleware(middleware.RequestLogger)
+	r.Middleware((*Context).Version)
+	r.Middleware((*Context).MongoDatabase)
+	//r.Middleware((*Context).RequestLogger)
 
 	// Setup general routes
 	r.Get("/", (*Context).Index)
@@ -39,7 +41,7 @@ func NewRouter() *web.Router {
 	// Setup Docker registry API routes as per
 	// http://docs.docker.io/reference/api/registry_index_spec/
 	api := r.Subrouter(ApiContext{}, "/v1")
-	api.Middleware(middleware.ContentTypeJson)
+	api.Middleware(ContentTypeJson)
 
 	api.Get("/users", (*ApiContext).UserLogin)
 	api.Post("/users", (*ApiContext).UserCreate)
@@ -76,10 +78,7 @@ func NewRouter() *web.Router {
 
 }
 
+// Index handles incoming GET requests on our root index '/'
 func (c *Context) Index(res web.ResponseWriter, req *web.Request) {
-	fmt.Fprintf(res, "Hello World")
-}
-
-func (c *Context) All(res web.ResponseWriter, req *web.Request) {
 	fmt.Fprintf(res, "Hello World")
 }
