@@ -12,6 +12,9 @@ import (
 	"github.com/gocraft/web"
 )
 
+// The realm to use for all basic authentication
+var realm = "Authentication Required"
+
 // Version adds a X-Docker-Registry-Version cookie header
 func (c *Context) Version(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
 	res.Header().Set("X-Docker-Registry-Version", "0.0.1")
@@ -60,8 +63,6 @@ func (c *Context) AuthenticationWhitelist(res web.ResponseWriter, req *web.Reque
 // BasicAuthentication attempts to authenticate users and refuses access
 // if authentication fails and the URL is not whitelisted.
 func (c *Context) BasicAuthentication(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
-
-	realm := "Authentication Required"
 
 	for _, url := range c.AuthWhitelist {
 		if req.URL.Path == url {
@@ -122,5 +123,51 @@ func (c *Context) BasicAuthentication(res web.ResponseWriter, req *web.Request, 
 	c.User = user
 
 	next(res, req)
+
+}
+
+// RepositoryToken middleware is responsible for authenticating requests for repositories
+// and generating/verifying an access token that is used by the docker client.
+func (c *Context) RepositoryToken(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
+
+	if req.Header.Get("X-Docker-Token") == "true" {
+
+		// Ok, the client has asked for a token to be generated.
+		// By now, we should have a user authenticated via basic
+		// authentication. Throw toys out of pram if not.
+		if c.User == nil {
+			res.Header().Set("Www-Authenticate", fmt.Sprintf(`Basic real="%s"`, realm))
+			res.WriteHeader(http.StatusUnauthorized)
+			res.Write([]byte("Unauthorized"))
+			return
+		}
+
+		// A token request should have a namespace and repository.
+		// If not, we have nothing to authenticate the user against.
+		if req.PathParams["namespace"] == "" || req.PathParams["repository"] == "" {
+			log.Printf("Error: Got an authentication token request from %s but no namespace/repository", c.User)
+			res.WriteHeader(http.StatusBadRequest)
+			res.Write([]byte("Unauthorized"))
+			return
+		}
+
+		repository := &models.Repository{
+			Namespace: req.PathParams["namespace"],
+			Name:      req.PathParams["repository"],
+		}
+
+		token, err := repository.AuthenticateOwner(c.User)
+		if err != nil {
+			log.Printf("Error: User %s is not allowed to access %s", c.User, repository)
+			res.WriteHeader(http.StatusForbidden)
+			res.Write([]byte("Forbidden"))
+			return
+		}
+
+		res.WriteHeader(http.StatusOK)
+		res.Header().Set("X-Docker-Token", token)
+		return
+
+	}
 
 }

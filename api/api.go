@@ -49,6 +49,7 @@ func NewRouter(db *mgo.Session) *web.Router {
 	api.Middleware(ContentTypeJSON)
 	api.Middleware((*APIContext).AuthenticationWhitelist)
 	api.Middleware((*APIContext).BasicAuthentication)
+	api.Middleware((*APIContext).RepositoryToken)
 
 	api.Get("/users", (*APIContext).UserLogin)
 	api.Post("/users", (*APIContext).UserCreate)

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"time"
+	"github.com/PaulMaddox/docker.directory/storage"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 
@@ -14,9 +16,20 @@ import (
 // User encapulates an authenticated user and is used
 // by the various contexts/handlers
 type User struct {
-	Email    string
-	Username string
-	Password string
+	Created         int64
+	Modified        int64
+	Email           string
+	Username        string
+	Password        string
+	StorageProvider int
+	AwsAccessKey    string
+	AwsSecretKey    string
+	AwsBucket       string
+}
+
+// String prints a textual representation of the user
+func (u *User) String() string {
+	return u.Username + " <" + u.Email + ">"
 }
 
 // Validate checks that a user meets the following requirements as
@@ -56,7 +69,7 @@ func (u *User) Validate(session *mgo.Session) error {
 func (u *User) EncryptPassword() error {
 
 	p := []byte(u.Password)
-	c, err := bcrypt.GenerateFromPassword(p, bcrypt.DefaultCost)
+	c, err := bcrypt.GenerateFromPassword(p, bcrypt.MaxCost)
 	if err != nil {
 		return err
 	}
@@ -110,6 +123,17 @@ func (u *User) Create(session *mgo.Session) error {
 	db := session.Copy()
 	defer db.Close()
 
+	// By default, all users use S3 as their storage provider
+	// although this could be overridden in the Web IU at a later time
+	u.StorageProvider = storage.PROVIDER_AWS
+
+	// TODO: Remove this at later stage
+	u.StorageProvider = storage.PROVIDER_DUMMY
+
+	// Set the created/modified dates on the record
+	u.Created = time.Now().Unix()
+	u.Modified = time.Now().Unix()
+
 	collection := db.DB("directory").C("users")
 	if err := collection.Insert(u); err != nil {
 		msg := fmt.Sprintf("could not insert new user %s (%s)", u.Username, err)
@@ -147,4 +171,28 @@ func AuthenticateUser(session *mgo.Session, username, password string) (*User, e
 
 	return result, nil
 
+}
+
+// GetStorageProvider fetches a storage provider configured to the user's preference (eg: AWS S3)
+func (u *User) GetStorageProvider() storage.StorageProvider {
+
+	switch u.StorageProvider {
+	case storage.PROVIDER_AWS:
+		return storage.NewAwsProvider(u.AwsAccessKey, u.AwsSecretKey, u.AwsBucket)
+	case storage.PROVIDER_DUMMY:
+		return storage.NewDummyProvider()
+	case storage.PROVIDER_DISK:
+		return nil
+	}
+
+	return nil
+
+}
+
+// CanAccessRepository checks if a user can access a repository.
+// This satisfies the models.Owner interface. Returns nil if they can,
+// or an error if not.
+func (u *User) CanAccessRepository(repository *Repository) error {
+	// TODO: Check if a user can access a repository
+	return nil
 }
