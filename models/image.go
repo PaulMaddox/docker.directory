@@ -8,4 +8,5 @@ type Image struct {
 	Identifier string        `json:"id"`
 	Tag        string
 	Checksum   string
+	Metadata   string
 }

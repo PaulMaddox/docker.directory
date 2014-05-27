@@ -39,8 +39,14 @@ func (c *Context) RequestLogger(res web.ResponseWriter, req *web.Request, next w
 	}
 
 	body, _ := ioutil.ReadAll(req.Body)
+
 	if len(body) > 0 {
-		log.Printf("* %s", string(body[:]))
+		switch req.Header.Get("Content-Type") {
+		case "application/json":
+			log.Printf("* %s", string(body[:]))
+		case "text/plain":
+			log.Printf("* %s", string(body[:]))
+		}
 	}
 
 	log.Printf("***************************************************************************************")

@@ -58,6 +58,9 @@ func NewRouter(db *mgo.Session) *web.Router {
 	api.Get("/images/:image_id/json", (*APIContext).ImageGet)
 	api.Put("/images/:image_id/json", (*APIContext).ImagePut)
 	api.Delete("/images/:image_id/json", (*APIContext).ImageDelete)
+	api.Get("/images/:image_id/checksum", (*APIContext).ImageChecksumGet)
+	api.Put("/images/:image_id/checksum", (*APIContext).ImageChecksumPut)
+	api.Delete("/images/:image_id/checksum", (*APIContext).ImageChecksumDelete)
 
 	api.Get("/images/:image_id/ancestry", (*APIContext).AncestryGet)
 	api.Put("/images/:image_id/ancestry", (*APIContext).AncestryPut)

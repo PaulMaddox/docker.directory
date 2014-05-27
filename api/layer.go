@@ -13,7 +13,7 @@ func (c *APIContext) LayerGet(res web.ResponseWriter, req *web.Request) {
 }
 
 func (c *APIContext) LayerPut(res web.ResponseWriter, req *web.Request) {
-	res.WriteHeader(http.StatusNotImplemented)
+	res.WriteHeader(http.StatusOK)
 	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
 
