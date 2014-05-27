@@ -17,6 +17,7 @@ func (c *APIContext) UserCreate(res web.ResponseWriter, req *web.Request) {
 	var user models.User
 	err := decoder.Decode(&user)
 	if err != nil {
+		log.Printf("Failed to create user (%s)", err)
 		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(res, "Invalid JSON")
 		return
@@ -36,11 +37,13 @@ func (c *APIContext) UserCreate(res web.ResponseWriter, req *web.Request) {
 }
 
 func (c *APIContext) UserUpdate(res web.ResponseWriter, req *web.Request) {
+	log.Printf("User update")
 	res.WriteHeader(http.StatusNotImplemented)
 	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
 
 func (c *APIContext) UserLogin(res web.ResponseWriter, req *web.Request) {
+	log.Printf("User login")
 	res.WriteHeader(http.StatusNotImplemented)
 	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }

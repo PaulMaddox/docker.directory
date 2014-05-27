@@ -11,9 +11,8 @@ import (
 // Context is inialised for each user by the middleware and passed
 // to the URL handlers when it can be inspected/updated.
 type Context struct {
-	User          *models.User
-	Database      *mgo.Session
-	AuthWhitelist []string
+	User     *models.User
+	Database *mgo.Session
 }
 
 // APIContext is inialised for each API user by the middleware and passed
@@ -34,11 +33,9 @@ func NewRouter(db *mgo.Session) *web.Router {
 	r := web.New(Context{})
 
 	// Setup middleware
-	r.Middleware(web.LoggerMiddleware)
-	r.Middleware(web.ShowErrorsMiddleware)
+	r.Middleware((*Context).RequestLogger)
 	r.Middleware((*Context).Version)
 	r.Middleware((*Context).MongoDatabase)
-	//r.Middleware((*Context).RequestLogger)
 
 	// Setup general routes
 	r.Get("/", (*Context).Index)
@@ -47,9 +44,7 @@ func NewRouter(db *mgo.Session) *web.Router {
 	// http://docs.docker.io/reference/api/registry_index_spec/
 	api := r.Subrouter(APIContext{}, "/v1")
 	api.Middleware(ContentTypeJSON)
-	api.Middleware((*APIContext).AuthenticationWhitelist)
-	api.Middleware((*APIContext).BasicAuthentication)
-	api.Middleware((*APIContext).RepositoryToken)
+	api.Middleware((*APIContext).Authenticate)
 
 	api.Get("/users", (*APIContext).UserLogin)
 	api.Post("/users", (*APIContext).UserCreate)
@@ -68,17 +63,17 @@ func NewRouter(db *mgo.Session) *web.Router {
 	api.Put("/images/:image_id/ancestry", (*APIContext).AncestryPut)
 	api.Delete("/images/:image_id/ancestry", (*APIContext).AncestryDelete)
 
-	api.Put("/repositories/:namespace/:repository", (*APIContext).RepositoryPut)
-	api.Put("/repositories/:namespace/:repository/auth", (*APIContext).RepositoryAuth)
-	api.Delete("/repositories/:namespace/:repository", (*APIContext).RepositoryDelete)
+	api.Put("/repositories/:owner/:repository", (*APIContext).RepositoryPut)
+	api.Put("/repositories/:owner/:repository/auth", (*APIContext).RepositoryAuth)
+	api.Delete("/repositories/:owner/:repository", (*APIContext).RepositoryDelete)
 
-	api.Get("/repositories/:namespace/:repository/tags", (*APIContext).TagsGet)
-	api.Get("/repositories/:namespace/:repository/tags/:tag", (*APIContext).TagGet)
-	api.Put("/repositories/:namespace/:repository/tags/:tag", (*APIContext).TagPut)
-	api.Delete("/repositories/:namespace/:repository/tags/:tag", (*APIContext).TagDelete)
+	api.Get("/repositories/:owner/:repository/tags", (*APIContext).TagsGet)
+	api.Get("/repositories/:owner/:repository/tags/:tag", (*APIContext).TagGet)
+	api.Put("/repositories/:owner/:repository/tags/:tag", (*APIContext).TagPut)
+	api.Delete("/repositories/:owner/:repository/tags/:tag", (*APIContext).TagDelete)
 
-	api.Get("/repositories/:namespace/:repository/images", (*APIContext).RepositoryImageGet)
-	api.Put("/repositories/:namespace/:repository/images", (*APIContext).RepositoryImagePut)
+	api.Get("/repositories/:owner/:repository/images", (*APIContext).RepositoryImageGet)
+	api.Put("/repositories/:owner/:repository/images", (*APIContext).RepositoryImagePut)
 
 	api.Get("/_ping", (*APIContext).Status)
 

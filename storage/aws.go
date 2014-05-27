@@ -7,6 +7,8 @@ import (
 	"launchpad.net/goamz/s3"
 )
 
+// AwsProvider is a storage provider that allows Docker images
+// to be stored on Amazon S3
 type AwsProvider struct {
 	AccessKey string
 	SecretKey string

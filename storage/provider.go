@@ -3,9 +3,12 @@ package storage
 import "io"
 
 const (
-	PROVIDER_AWS   int = 0
-	PROVIDER_DISK  int = 1
-	PROVIDER_DUMMY int = 2
+	// ProviderAws is a storage provider that interfaces to Amazon S3
+	ProviderAws int = 0
+
+	// ProviderDummy is a storage provider that is downright dishonest
+	// and doesn't give a damn about your data. It is however extremly fast.
+	ProviderDummy int = 1
 )
 
 // StorageProvider interface provides various upload/download functions

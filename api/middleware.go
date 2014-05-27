@@ -1,19 +1,14 @@
 package api
 
 import (
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
+	"bytes"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
-	"github.com/PaulMaddox/docker.directory/models"
+	"github.com/PaulMaddox/docker.directory/auth"
 	"github.com/gocraft/web"
 )
-
-// The realm to use for all basic authentication
-var realm = "Authentication Required"
 
 // Version adds a X-Docker-Registry-Version cookie header
 func (c *Context) Version(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
@@ -36,138 +31,73 @@ func ContentTypeJSON(res web.ResponseWriter, req *web.Request, next web.NextMidd
 // RequestLogger prints a pretty JSON representation of incoming requests
 func (c *Context) RequestLogger(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
 
-	b, err := json.MarshalIndent(req, "", "    ")
+	log.Printf("***************************************************************************************")
+	log.Printf("* %s: %s", req.Method, req.URL.Path)
+	log.Printf("***************************************************************************************")
+	for header := range req.Header {
+		log.Printf("* %s: %s", header, req.Header[header])
+	}
+
+	body, _ := ioutil.ReadAll(req.Body)
+	if len(body) > 0 {
+		log.Printf("* %s", string(body[:]))
+	}
+
+	log.Printf("***************************************************************************************")
+
+	// As we've now drained req.Body, we need
+	// to refill it so other middleware/handlers
+	// don't get an empty body.
+	restore := bytes.NewReader(body)
+	req.Body = ioutil.NopCloser(restore)
+
+	next(res, req)
+}
+
+// Authenticate middleware authenticates a HTTP request either via basic auth or by accesstoken
+// as per the Docker Registry & Index Spec.
+func (c *Context) Authenticate(w web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
+
+	user, err := auth.Authenticate(r, c.Database)
 	if err != nil {
-		log.Printf("Error: Unable to create JSON representation of incoming request")
-		next(res, req)
-		return
-	}
-
-	fmt.Print(string(b))
-	next(res, req)
-
-}
-
-// AuthenticationWhitelist generates a list of whitelisted URLs
-// that require no authentication to access
-func (c *Context) AuthenticationWhitelist(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
-
-	c.AuthWhitelist = []string{
-		"/v1/users/",
-		"/v1/_ping",
-	}
-
-	next(res, req)
-}
-
-// BasicAuthentication attempts to authenticate users and refuses access
-// if authentication fails and the URL is not whitelisted.
-func (c *Context) BasicAuthentication(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
-
-	for _, url := range c.AuthWhitelist {
-		if req.URL.Path == url {
-			// This URL is whitelisted - don't protect it
-			next(res, req)
+		switch err {
+		case auth.ErrAuthenticationRequired:
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Header().Set("Www-Authenticate", `Basic realm="Authentication Required"`)
+			w.Write([]byte("Unauthorized"))
+			return
+		case auth.ErrForbidden:
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Forbidden"))
+			return
+		case auth.ErrNoDatabase:
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		default:
 			return
 		}
 	}
 
-	if c.Database == nil {
-		log.Printf("Error: Unable to authenticate user as database connection == nil")
-		res.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	if user != nil {
 
-	auth := req.Header.Get("Authorization")
+		// Set the user on the context so that it can be used by other
+		// middleware and handlers
+		c.User = user
 
-	// If the request has no authentication credentials, demand them
-	if auth == "" {
-		res.Header().Set("Www-Authenticate", fmt.Sprintf(`Basic realm="%s"`, realm))
-		res.WriteHeader(http.StatusUnauthorized)
-		res.Write([]byte("Unauthorized"))
-		return
-	}
-
-	parts := strings.Split(auth, " ")
-	if len(parts) != 2 || parts[0] != "Basic" {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Unauthorized"))
-		return
-	}
-
-	decrypted, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Unauthorized"))
-		return
-	}
-
-	creds := strings.Split(string(decrypted[:]), ":")
-	if len(creds) != 2 {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Unauthorized"))
-		return
-	}
-
-	user, err := models.AuthenticateUser(c.Database, creds[0], creds[1])
-	if err != nil {
-		res.Header().Set("Www-Authenticate", fmt.Sprintf(`Basic realm="%s"`, realm))
-		res.WriteHeader(http.StatusUnauthorized)
-		res.Write([]byte("Unauthorized"))
-		return
-
-	}
-
-	// Set the user on the context so that it's available
-	// for other modules/handlers
-	c.User = user
-
-	next(res, req)
-
-}
-
-// RepositoryToken middleware is responsible for authenticating requests for repositories
-// and generating/verifying an access token that is used by the docker client.
-func (c *Context) RepositoryToken(res web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
-
-	if req.Header.Get("X-Docker-Token") == "true" {
-
-		// Ok, the client has asked for a token to be generated.
-		// By now, we should have a user authenticated via basic
-		// authentication. Throw toys out of pram if not.
-		if c.User == nil {
-			res.Header().Set("Www-Authenticate", fmt.Sprintf(`Basic real="%s"`, realm))
-			res.WriteHeader(http.StatusUnauthorized)
-			res.Write([]byte("Unauthorized"))
-			return
-		}
-
-		// A token request should have a namespace and repository.
-		// If not, we have nothing to authenticate the user against.
-		if req.PathParams["namespace"] == "" || req.PathParams["repository"] == "" {
-			log.Printf("Error: Got an authentication token request from %s but no namespace/repository", c.User)
-			res.WriteHeader(http.StatusBadRequest)
-			res.Write([]byte("Unauthorized"))
-			return
-		}
-
-		repository := &models.Repository{
-			Namespace: req.PathParams["namespace"],
-			Name:      req.PathParams["repository"],
-		}
-
-		token, err := repository.AuthenticateOwner(c.User)
+		// If the user has a token for this repository, inject it
+		path := r.PathParams["owner"] + "/" + r.PathParams["repository"]
+		token, err := c.User.GetAccessToken(c.Database, path)
 		if err != nil {
-			log.Printf("Error: User %s is not allowed to access %s", c.User, repository)
-			res.WriteHeader(http.StatusForbidden)
-			res.Write([]byte("Forbidden"))
-			return
+			log.Printf("Unable to get token for %s to access %s (%s)", user, path, err)
 		}
 
-		res.WriteHeader(http.StatusOK)
-		res.Header().Set("X-Docker-Token", token)
-		return
+		if token != nil {
+			w.Header().Set("X-Docker-Token", token.String())
+			w.Header().Set("X-Docker-Endpoints", r.Host)
+		}
 
 	}
+
+	next(w, r)
 
 }

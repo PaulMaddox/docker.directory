@@ -16,8 +16,9 @@ import (
 // User encapulates an authenticated user and is used
 // by the various contexts/handlers
 type User struct {
-	Created         int64
-	Modified        int64
+	ID              bson.ObjectId `bson:"_id,omitempty"`
+	Created         time.Time
+	Modified        time.Time
 	Email           string
 	Username        string
 	Password        string
@@ -41,12 +42,11 @@ func (u *User) String() string {
 func (u *User) Validate(session *mgo.Session) error {
 
 	// Check the username
-	pattern := `^[a-zA-Z0-9\._]{4,30}$`
-	if r, err := regexp.Compile(pattern); err != nil {
+	if r, err := regexp.Compile(OwnerPattern); err != nil {
 		log.Printf("invalid regular expression for verifying user")
 	} else {
 		if !r.MatchString(u.Username) {
-			return errors.New("wrong username format (should match " + pattern + ")")
+			return errors.New("wrong username format (should match " + OwnerPattern + ")")
 		}
 	}
 
@@ -69,7 +69,7 @@ func (u *User) Validate(session *mgo.Session) error {
 func (u *User) EncryptPassword() error {
 
 	p := []byte(u.Password)
-	c, err := bcrypt.GenerateFromPassword(p, bcrypt.MaxCost)
+	c, err := bcrypt.GenerateFromPassword(p, bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
@@ -103,6 +103,23 @@ func (u *User) Exists(session *mgo.Session) bool {
 
 }
 
+// LoadUser fetches a user from the database based on it's ObjectId
+func LoadUser(session *mgo.Session, id bson.ObjectId) (*User, error) {
+
+	db := session.Copy()
+	defer db.Close()
+
+	collection := db.DB("directory").C("users")
+
+	result := &User{}
+	err := collection.Find(bson.M{
+		"_id": id,
+	}).One(result)
+
+	return result, err
+
+}
+
 // Create creates a new user in the database via the provided Mongo session
 func (u *User) Create(session *mgo.Session) error {
 
@@ -125,14 +142,14 @@ func (u *User) Create(session *mgo.Session) error {
 
 	// By default, all users use S3 as their storage provider
 	// although this could be overridden in the Web IU at a later time
-	u.StorageProvider = storage.PROVIDER_AWS
+	u.StorageProvider = storage.ProviderAws
 
 	// TODO: Remove this at later stage
-	u.StorageProvider = storage.PROVIDER_DUMMY
+	u.StorageProvider = storage.ProviderDummy
 
 	// Set the created/modified dates on the record
-	u.Created = time.Now().Unix()
-	u.Modified = time.Now().Unix()
+	u.Created = time.Now()
+	u.Modified = time.Now()
 
 	collection := db.DB("directory").C("users")
 	if err := collection.Insert(u); err != nil {
@@ -177,12 +194,10 @@ func AuthenticateUser(session *mgo.Session, username, password string) (*User, e
 func (u *User) GetStorageProvider() storage.StorageProvider {
 
 	switch u.StorageProvider {
-	case storage.PROVIDER_AWS:
+	case storage.ProviderAws:
 		return storage.NewAwsProvider(u.AwsAccessKey, u.AwsSecretKey, u.AwsBucket)
-	case storage.PROVIDER_DUMMY:
+	case storage.ProviderDummy:
 		return storage.NewDummyProvider()
-	case storage.PROVIDER_DISK:
-		return nil
 	}
 
 	return nil
@@ -192,7 +207,40 @@ func (u *User) GetStorageProvider() storage.StorageProvider {
 // CanAccessRepository checks if a user can access a repository.
 // This satisfies the models.Owner interface. Returns nil if they can,
 // or an error if not.
-func (u *User) CanAccessRepository(repository *Repository) error {
+func (u *User) CanAccessRepository(session *mgo.Session, path string) error {
 	// TODO: Check if a user can access a repository
 	return nil
+}
+
+// GetAccessToken fetches a previously created token that allows this
+// user access to the provided repository path - if it finds a valid
+// one in the database that hasn't expired.
+func (u *User) GetAccessToken(db *mgo.Session, path string) (*Token, error) {
+
+	session := db.Copy()
+	defer session.Close()
+
+	collection := session.DB("directory").C("tokens")
+
+	var tokens []Token
+	collection.Find(bson.M{
+		"user_id": u.ID,
+		"path":    path,
+	}).All(&tokens)
+
+	for index := range tokens {
+		if time.Now().After(tokens[index].Expires) {
+			// Token has expired
+			continue
+		}
+		return &tokens[index], nil
+	}
+
+	return nil, nil
+
+}
+
+// GetID is a helper function that satisfies the Owner interface
+func (u *User) GetID() bson.ObjectId {
+	return u.ID
 }
