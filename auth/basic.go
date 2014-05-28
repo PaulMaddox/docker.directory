@@ -42,7 +42,7 @@ func AuthenticateBasic(r *web.Request, db *mgo.Session) (*models.User, error) {
 	user, err := models.AuthenticateUser(db, creds[0], creds[1])
 	if err != nil {
 		log.Printf("Invalid login attempt from %s for user %s", r.RemoteAddr, creds[0])
-		return nil, ErrForbidden
+		return nil, ErrAuthenticationRequired
 	}
 
 	return user, nil

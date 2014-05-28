@@ -34,7 +34,7 @@ func NewRouter(db *mgo.Session) *web.Router {
 
 	// Setup middleware
 	r.Middleware((*Context).RequestLogger)
-	r.Middleware((*Context).Version)
+	//r.Middleware((*Context).Version)
 	r.Middleware((*Context).MongoDatabase)
 
 	// Setup general routes

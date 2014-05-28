@@ -43,21 +43,21 @@ func (u *User) Validate(session *mgo.Session) error {
 
 	// Check the username
 	if r, err := regexp.Compile(OwnerPattern); err != nil {
-		log.Printf("invalid regular expression for verifying user")
+		log.Printf("Invalid regular expression for verifying user")
 	} else {
 		if !r.MatchString(u.Username) {
-			return errors.New("wrong username format (should match " + OwnerPattern + ")")
+			return errors.New("Wrong username format (should match " + OwnerPattern + ")")
 		}
 	}
 
 	// Check if the username/email already exists
 	if u.Exists(session) {
-		return errors.New("username or email already exists")
+		return errors.New("Username or email already exists")
 	}
 
 	// Check the password
 	if len(u.Password) < 5 || len(u.Password) > 30 {
-		return errors.New("invalid password (should be between 5-30 characters)")
+		return errors.New("Invalid password (should be between 5-30 characters)")
 	}
 
 	return nil
@@ -95,9 +95,13 @@ func (u *User) Exists(session *mgo.Session) bool {
 
 	result := &User{}
 	err := collection.Find(bson.M{
-		"email":    u.Email,
-		"username": u.Username,
+		"$or": []bson.M{
+			bson.M{"email": u.Email},
+			bson.M{"username": u.Username},
+		},
 	}).One(result)
+
+	log.Print(result)
 
 	return err != mgo.ErrNotFound
 
@@ -126,7 +130,7 @@ func (u *User) Create(session *mgo.Session) error {
 	if err := u.Validate(session); err != nil {
 		msg := fmt.Sprintf("validation failed for new user %s <%s> (%s)", u.Username, u.Email, err)
 		log.Print(msg)
-		return errors.New(msg)
+		return err
 	}
 
 	// The docker tool delivers passwords in plain-text.

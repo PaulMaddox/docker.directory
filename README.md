@@ -11,3 +11,5 @@ Contact: paul@sonelli.com
  - [Docker Registry & Index Spec](http://docs.docker.io/reference/api/registry_index_spec/)
 
  - [Docker Registry API](http://docs.docker.io/reference/api/registry_api/)
+
+ - [Docker Client Source](https://github.com/dotcloud/docker/blob/master/registry)

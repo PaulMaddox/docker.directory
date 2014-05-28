@@ -15,7 +15,6 @@ type WhitelistEntry struct {
 var Whitelist = []WhitelistEntry{
 
 	// User creation/login
-	{Method: "GET", URL: regexp.MustCompile(`/v[0-9]+/users[/]?`)},
 	{Method: "PUT", URL: regexp.MustCompile(`/v[0-9]+/users[/]?`)},
 	{Method: "POST", URL: regexp.MustCompile(`/v[0-9]+/users[/]?`)},
 

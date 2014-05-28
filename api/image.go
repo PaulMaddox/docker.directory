@@ -21,11 +21,12 @@ func (c *APIContext) ImageGet(res web.ResponseWriter, req *web.Request) {
 // HTTP 200 if successful
 // HTTP 204 if already exists
 func (c *APIContext) ImagePut(res web.ResponseWriter, req *web.Request) {
-	//res.WriteHeader(http.StatusNotImplemented)
-	//fmt.Fprint(res, JSON{"error": "Not implemented"})
-	res.WriteHeader(http.StatusOK)
-	fmt.Fprint(res, []byte("[]"))
+	res.WriteHeader(http.StatusBadRequest)
+	fmt.Fprint(res, JSON{
+		"error": "Image already exists",
+	})
 	log.Printf("Created image %s", req.PathParams["image_id"])
+	return
 }
 
 func (c *APIContext) ImageDelete(res web.ResponseWriter, req *web.Request) {
