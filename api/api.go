@@ -34,7 +34,6 @@ func NewRouter(db *mgo.Session) *web.Router {
 
 	// Setup middleware
 	r.Middleware((*Context).RequestLogger)
-	//r.Middleware((*Context).Version)
 	r.Middleware((*Context).MongoDatabase)
 
 	// Setup general routes
@@ -45,6 +44,7 @@ func NewRouter(db *mgo.Session) *web.Router {
 	api := r.Subrouter(APIContext{}, "/v1")
 	api.Middleware(ContentTypeJSON)
 	api.Middleware((*APIContext).Authenticate)
+	//api.Middleware((*APIContext).MultipartUpload)
 
 	api.Get("/users", (*APIContext).UserLogin)
 	api.Post("/users", (*APIContext).UserCreate)
@@ -52,12 +52,14 @@ func NewRouter(db *mgo.Session) *web.Router {
 
 	api.Get("/images/:image_id/layer", (*APIContext).LayerGet)
 	api.Put("/images/:image_id/layer", (*APIContext).LayerPut)
+
 	api.Delete("/images/:image_id/layer", (*APIContext).LayerDelete)
 
 	api.Get("/images", (*APIContext).ImageIndex)
 	api.Get("/images/:image_id/json", (*APIContext).ImageGet)
 	api.Put("/images/:image_id/json", (*APIContext).ImagePut)
 	api.Delete("/images/:image_id/json", (*APIContext).ImageDelete)
+
 	api.Get("/images/:image_id/checksum", (*APIContext).ImageChecksumGet)
 	api.Put("/images/:image_id/checksum", (*APIContext).ImageChecksumPut)
 	api.Delete("/images/:image_id/checksum", (*APIContext).ImageChecksumDelete)
@@ -70,13 +72,13 @@ func NewRouter(db *mgo.Session) *web.Router {
 	api.Put("/repositories/:owner/:repository/auth", (*APIContext).RepositoryAuth)
 	api.Delete("/repositories/:owner/:repository", (*APIContext).RepositoryDelete)
 
+	api.Get("/repositories/:owner/:repository/images", (*APIContext).RepositoryImageGet)
+	api.Put("/repositories/:owner/:repository/images", (*APIContext).RepositoryImagePut)
+
 	api.Get("/repositories/:owner/:repository/tags", (*APIContext).TagsGet)
 	api.Get("/repositories/:owner/:repository/tags/:tag", (*APIContext).TagGet)
 	api.Put("/repositories/:owner/:repository/tags/:tag", (*APIContext).TagPut)
 	api.Delete("/repositories/:owner/:repository/tags/:tag", (*APIContext).TagDelete)
-
-	api.Get("/repositories/:owner/:repository/images", (*APIContext).RepositoryImageGet)
-	api.Put("/repositories/:owner/:repository/images", (*APIContext).RepositoryImagePut)
 
 	api.Get("/_ping", (*APIContext).Status)
 

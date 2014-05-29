@@ -62,7 +62,7 @@ func Authenticate(r *web.Request, db *mgo.Session) (*models.User, error) {
 
 	// 1) Basic auth was successful, and the client *isn't* requesting a token to be generated
 	if err == nil && r.Header.Get("X-Docker-Token") != "true" {
-		log.Printf("Basic auth successful for %s", r.URL.Path)
+		log.Printf("Basic auth successful for %s", user)
 		return user, nil
 	}
 

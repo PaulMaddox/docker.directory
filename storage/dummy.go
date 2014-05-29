@@ -34,7 +34,7 @@ func (d *DummyProvider) Get(path string) (io.ReadCloser, error) {
 }
 
 // Put pretends to upload a file, but actually just casually accepts and never delivers
-func (d *DummyProvider) Put(path string, r io.Reader, length int64) error {
+func (d *DummyProvider) Put(path string, r io.ReadCloser) error {
 	log.Printf("DummyProvider: Uploading file %s...", path)
 	return nil
 }

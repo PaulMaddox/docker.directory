@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"labix.org/v2/mgo"
 
 	"github.com/PaulMaddox/docker.directory/api"
+	"labix.org/v2/mgo"
 )
 
 func main() {
@@ -35,6 +35,6 @@ func main() {
 	router := api.NewRouter(database)
 	bind := "0.0.0.0:" + strconv.Itoa(*port)
 	log.Printf("Listening on %s", bind)
-	log.Fatal(http.ListenAndServe(bind, router))
 
+	log.Fatal(http.ListenAndServe(bind, router))
 }

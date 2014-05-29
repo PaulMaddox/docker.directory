@@ -10,7 +10,8 @@ import (
 	"github.com/gocraft/web"
 )
 
-// UserCreate handles user creation POST requests from the docker client
+// UserCreate handles user creation POST requests from the docker client.
+// POST /users
 func (c *APIContext) UserCreate(res web.ResponseWriter, req *web.Request) {
 
 	decoder := json.NewDecoder(req.Body)
@@ -36,6 +37,7 @@ func (c *APIContext) UserCreate(res web.ResponseWriter, req *web.Request) {
 
 }
 
+// PUT /users/:username
 func (c *APIContext) UserUpdate(res web.ResponseWriter, req *web.Request) {
 	log.Printf("User update")
 	res.WriteHeader(http.StatusNotImplemented)
@@ -43,6 +45,7 @@ func (c *APIContext) UserUpdate(res web.ResponseWriter, req *web.Request) {
 }
 
 // UserLogin authenticates a user
+// GET /users
 func (c *APIContext) UserLogin(res web.ResponseWriter, req *web.Request) {
 	if c.User != nil {
 		res.WriteHeader(http.StatusOK)

@@ -11,6 +11,7 @@ import (
 	"github.com/gocraft/web"
 )
 
+// PUT /repositories/:owner/:repository/auth
 func (c *APIContext) RepositoryAuth(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
 	fmt.Fprint(res, JSON{"error": "Not implemented"})
@@ -71,16 +72,19 @@ func (c *APIContext) RepositoryPut(res web.ResponseWriter, req *web.Request) {
 
 }
 
+// DELETE /repositories/:owner/:repository
 func (c *APIContext) RepositoryDelete(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
 	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
 
+// GET /repositories/:owner/:repository/images
 func (c *APIContext) RepositoryImageGet(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
 	fmt.Fprint(res, JSON{"error": "Not implemented"})
 }
 
+// PUT /repositories/:owner/:repository/images
 func (c *APIContext) RepositoryImagePut(res web.ResponseWriter, req *web.Request) {
 	res.WriteHeader(http.StatusNotImplemented)
 	fmt.Fprint(res, JSON{"error": "Not implemented"})

@@ -14,5 +14,5 @@ const (
 // StorageProvider interface provides various upload/download functions
 type StorageProvider interface {
 	Get(path string) (io.ReadCloser, error)
-	Put(path string, r io.Reader, length int64) error
+	Put(path string, r io.ReadCloser) error
 }
