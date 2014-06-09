@@ -44,14 +44,28 @@ func LoadImage(session *mgo.Session, identifier string) (*Image, error) {
 
 }
 
+// Update is just a semantic shortcut to create, as create
+// uses an upsert anyway
+func (i *Image) Update(session *mgo.Session) error {
+	return i.Create(session)
+}
+
 // Create saves the image to the database
 func (i *Image) Create(session *mgo.Session) error {
 
 	db := session.Copy()
 	defer db.Close()
 
+	if i.ID == "" {
+		i.ID = bson.NewObjectId()
+	}
+
 	collection := db.DB("directory").C("images")
-	return collection.Insert(i)
+	_, err := collection.Upsert(bson.M{
+		"identifier": i.Identifier,
+	}, i)
+
+	return err
 
 }
 

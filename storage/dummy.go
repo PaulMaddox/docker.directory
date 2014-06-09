@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"io"
-	"log"
 )
 
 // DummyProvider is a storage provider that is downright dishonest
@@ -26,15 +25,14 @@ func (cb *ClosingBuffer) Close() error {
 	return nil
 }
 
-// Get pretends to download a file, but actually just serves back dummy data
-func (d *DummyProvider) Get(path string) (io.ReadCloser, error) {
+// Reader returns an io.ReadCloser for the specified path
+func (d *DummyProvider) Reader(path string) (io.ReadCloser, error) {
 	return &ClosingBuffer{
 		bytes.NewBufferString("Dummy storage provider doesn't care about your data"),
 	}, nil
 }
 
-// Put pretends to upload a file, but actually just casually accepts and never delivers
-func (d *DummyProvider) Put(path string, r io.ReadCloser) error {
-	log.Printf("DummyProvider: Uploading file %s...", path)
-	return nil
+// Writer returns an io.WriteCloser for the specified path
+func (d *DummyProvider) Writer(path string) (closer io.WriteCloser, err error) {
+	return closer, nil
 }

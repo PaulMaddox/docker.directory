@@ -35,6 +35,7 @@ func AuthenticateBasic(r *web.Request, db *mgo.Session) (*models.User, error) {
 	}
 
 	creds := strings.Split(string(decrypted[:]), ":")
+
 	if len(creds) != 2 {
 		return nil, ErrAuthenticationRequired
 	}

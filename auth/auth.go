@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"regexp"
 
 	"log"
 	"github.com/PaulMaddox/docker.directory/models"
@@ -28,7 +29,7 @@ var (
 	ErrInternalServerError = errors.New("internal server error")
 )
 
-// Authenticate is responsible for authenticating users against repositories.
+// Authenticate is responsible for authenticating users.
 // It current recognises both basic and token authentication (as used by the
 // Docker client). It will either return nil,nil if no authentication is required
 // for the page, or a user object if authentication succeeds, or an error if
@@ -77,5 +78,70 @@ func Authenticate(r *web.Request, db *mgo.Session) (*models.User, error) {
 	}
 
 	return user, nil
+
+}
+
+// Authorize checks whether an authenticated user is allowed to
+// access the requested resource. Returns nil if allowed or an error if not
+func Authorize(session *mgo.Session, user *models.User, request *web.Request) error {
+
+	// First check if the URL is whitelisted
+	for _, w := range Whitelist {
+		// If the method matches...
+		if request.Method == w.Method {
+			// And the URL matches the regex
+			if w.URL.MatchString(request.URL.Path) {
+				// This URL is whitelisted
+				return nil
+			}
+		}
+	}
+
+	if user == nil {
+		log.Printf("Attempting to authorize access to %s but no user authenticated", request.URL.Path)
+		return ErrAuthenticationRequired
+	}
+
+	// Next see what kind of authorization we need.
+
+	// 1) Repository based; see if this user (or any of their organisations)
+	//    can access the resource.
+
+	// 2) Image based; see if the image belongs to a repository that
+	//    the user (or any of their organisations) has access to.
+
+	imgBased := regexp.MustCompile(`^\/v1/images`)
+	repoBased := regexp.MustCompile(`^\/v1\/repositories`)
+
+	switch {
+	case imgBased.MatchString(request.URL.Path):
+
+		// TODO: We should restrict access to images based on the parent repository
+		// But I can't think of an efficient way of doing this, without searching every single
+		// repository, and comparing lists of it's images.
+		return nil
+
+	case repoBased.MatchString(request.URL.Path):
+
+		owner := request.PathParams["owner"]
+
+		if owner == user.Username {
+			return nil
+		}
+
+		orgs, err := user.GetOrganisations(session)
+		if err != nil {
+			log.Printf("Unable to get organisations for user %s (%s)", user, err)
+		}
+
+		for _, org := range *orgs {
+			if org.Path == owner {
+				return nil
+			}
+		}
+
+	}
+
+	return ErrForbidden
 
 }

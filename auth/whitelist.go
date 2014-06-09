@@ -11,7 +11,7 @@ type WhitelistEntry struct {
 }
 
 // Whitelist is an array of WhitelistEntry's for URLs that require
-// no authentication.
+// no authentication or authorization.
 var Whitelist = []WhitelistEntry{
 
 	// User creation/login

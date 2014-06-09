@@ -44,7 +44,7 @@ func NewRouter(db *mgo.Session) *web.Router {
 	api := r.Subrouter(APIContext{}, "/v1")
 	api.Middleware(ContentTypeJSON)
 	api.Middleware((*APIContext).Authenticate)
-	//api.Middleware((*APIContext).MultipartUpload)
+	api.Middleware((*APIContext).Authorize)
 
 	api.Get("/users", (*APIContext).UserLogin)
 	api.Post("/users", (*APIContext).UserCreate)

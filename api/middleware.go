@@ -39,7 +39,7 @@ func (c *Context) RequestLogger(res web.ResponseWriter, req *web.Request, next w
 	}
 
 	content := req.Header.Get("Content-Type")
-	if content == "text/plain" || content == "application/json" {
+	if content == "text/plain" || content == "application/json" || content == "application/json; charset=utf-8" {
 
 		body, _ := ioutil.ReadAll(req.Body)
 		if len(body) > 0 {
@@ -103,6 +103,23 @@ func (c *Context) Authenticate(w web.ResponseWriter, r *web.Request, next web.Ne
 
 	}
 
+	next(w, r)
+
+}
+
+// Authorize middleware checks whether an authenticated user is allowed to access
+// the resource they are requesting
+func (c *Context) Authorize(w web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
+
+	if err := auth.Authorize(c.Database, c.User, r); err != nil {
+		// The authenticated user is not authorized to access the requested resource
+		log.Printf("Access denied for user %s accessing %s %s", c.User, r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Unauthorized"))
+		return
+	}
+
+	// The authenticated user is authorized to access the requested resource
 	next(w, r)
 
 }

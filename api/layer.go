@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/PaulMaddox/docker.directory/storage"
 	"github.com/gocraft/web"
 )
 
@@ -18,14 +19,16 @@ func (c *APIContext) LayerGet(res web.ResponseWriter, req *web.Request) {
 func (c *APIContext) LayerPut(res web.ResponseWriter, req *web.Request) {
 
 	id := req.PathParams["image_id"]
-	storage := c.User.GetStorageProvider()
+	provider := c.User.GetStorageProvider()
 
-	err := storage.Put(id, req.Body)
+	checksum, err := storage.Put(id, req.Body, provider)
 	if err != nil {
 		log.Printf("Error uploading image %s (%s)", id, err)
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("SHA256: %s", checksum)
 
 	res.WriteHeader(http.StatusOK)
 	return

@@ -26,6 +26,7 @@ type User struct {
 	AwsAccessKey    string
 	AwsSecretKey    string
 	AwsBucket       string
+	Organisations   []bson.ObjectId
 }
 
 // String prints a textual representation of the user
@@ -146,10 +147,7 @@ func (u *User) Create(session *mgo.Session) error {
 
 	// By default, all users use S3 as their storage provider
 	// although this could be overridden in the Web IU at a later time
-	u.StorageProvider = storage.ProviderAws
-
-	// TODO: Remove this at later stage
-	u.StorageProvider = storage.ProviderDummy
+	u.StorageProvider = storage.ProviderDisk
 
 	// Set the created/modified dates on the record
 	u.Created = time.Now()
@@ -186,6 +184,7 @@ func AuthenticateUser(session *mgo.Session, username, password string) (*User, e
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(result.Password), []byte(password)); err != nil {
+		log.Printf("Incorrect password for user %s (%s)", username, err)
 		msg := fmt.Sprintf("bad authentication attempt for user %s", username)
 		return result, errors.New(msg)
 	}
@@ -202,29 +201,23 @@ func (u *User) GetStorageProvider() storage.StorageProvider {
 		return storage.NewAwsProvider(u.AwsAccessKey, u.AwsSecretKey, u.AwsBucket)
 	case storage.ProviderDummy:
 		return storage.NewDummyProvider()
+	case storage.ProviderDisk:
+		return storage.NewDiskProvider()
 	}
 
 	return nil
 
 }
 
-// CanAccessRepository checks if a user can access a repository.
-// This satisfies the models.Owner interface. Returns nil if they can,
-// or an error if not.
-func (u *User) CanAccessRepository(session *mgo.Session, path string) error {
-	// TODO: Check if a user can access a repository
-	return nil
-}
-
 // GetAccessToken fetches a previously created token that allows this
 // user access to the provided repository path - if it finds a valid
 // one in the database that hasn't expired.
-func (u *User) GetAccessToken(db *mgo.Session, path string) (*Token, error) {
+func (u *User) GetAccessToken(session *mgo.Session, path string) (*Token, error) {
 
-	session := db.Copy()
-	defer session.Close()
+	db := session.Copy()
+	defer db.Close()
 
-	collection := session.DB("directory").C("tokens")
+	collection := db.DB("directory").C("tokens")
 
 	var tokens []Token
 	collection.Find(bson.M{
@@ -247,4 +240,23 @@ func (u *User) GetAccessToken(db *mgo.Session, path string) (*Token, error) {
 // GetID is a helper function that satisfies the Owner interface
 func (u *User) GetID() bson.ObjectId {
 	return u.ID
+}
+
+// GetOrganisations returns the organisations that this user is a member of
+func (u *User) GetOrganisations(session *mgo.Session) (*[]Organisation, error) {
+
+	db := session.Copy()
+	defer db.Close()
+
+	collection := db.DB("directory").C("organisations")
+
+	var organisations []Organisation
+	err := collection.Find(bson.M{
+		"_id": bson.M{
+			"$in": u.Organisations,
+		},
+	}).All(&organisations)
+
+	return &organisations, err
+
 }

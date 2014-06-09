@@ -32,12 +32,6 @@ func AuthenticateToken(r *web.Request, db *mgo.Session, user *models.User) (*mod
 	if user != nil && len(matches) == 0 {
 		if r.Header.Get("X-Docker-Token") == "true" {
 
-			if err := user.CanAccessRepository(db, path); err != nil {
-				// The user is not allowed to access this repository location
-				log.Printf("Error: User %s is not allowed to access repository %s", user, path)
-				return nil, ErrForbidden
-			}
-
 			// Attempt to reuse an existing token
 			token, err := user.GetAccessToken(db, path)
 			if err == nil && token != nil {
